@@ -54,32 +54,51 @@
   </div>
 
   <script>
-    // *สำคัญ* ใส่ LIFF ID ของคุณที่นี่
-    const LIFF_ID = "2008809721-wkEpHOm0"; 
-    // *สำคัญ* ใส่ URL ของ Web App ที่ได้จากการ Deploy ที่นี่ (Script App URL)
+    // *สำคัญ* ใส่ LIFF ID ของคุณ
+    const LIFF_ID = "2008852653-NMn9sh6P"; 
+    // *สำคัญ* URL ของ Web App
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxM6vaLvhW0Z2S1hYCKcERwf3H14Ukx0Sk9WezymTkz6Y7T_Q__gqTklMXUt29vdl9S/exec";
 
     let liffProfile = null;
 
     async function main() {
-      await liff.init({ liffId: LIFF_ID });
-      if (!liff.isLoggedIn()) {
-        liff.login();
-        return;
+      // โหลด LIFF
+      try {
+        await liff.init({ liffId: LIFF_ID });
+        if (!liff.isLoggedIn()) {
+          liff.login();
+          return;
+        }
+        liffProfile = await liff.getProfile();
+        document.getElementById('userId').value = liffProfile.userId;
+        
+        // โหลดข้อมูลโต๊ะหลังจากได้ LIFF แล้ว
+        loadTableStatus();
+      } catch (err) {
+        // กรณีเปิดใน Browser ธรรมดา หรือ LIFF Error ให้แสดง Error
+        console.error(err);
+        document.getElementById('loading').innerText = "โหลด LIFF ไม่สำเร็จ (ลองเปิดใน LINE)";
+        // ยังพยายามโหลดโต๊ะต่อเผื่อ test ใน browser
+        loadTableStatus();
       }
-      liffProfile = await liff.getProfile();
-      document.getElementById('userId').value = liffProfile.userId;
-      loadTableStatus();
     }
 
     function loadTableStatus() {
-      fetch(SCRIPT_URL + '?func=getStatus')
-        .then(res => res.json())
-        .then(data => {
-          renderTables(data);
-          document.getElementById('loading').style.display = 'none';
-          document.getElementById('tableContainer').style.display = 'flex';
-        });
+      // ใช้ fetch แบบจัดการ Redirect
+      fetch(SCRIPT_URL + '?func=getStatus', {
+          method: 'GET',
+          redirect: 'follow' // *สำคัญ* ต้องใส่เพื่อให้ตาม GAS Redirect ได้
+      })
+      .then(res => res.json())
+      .then(data => {
+        renderTables(data);
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('tableContainer').style.display = 'flex';
+      })
+      .catch(err => {
+         document.getElementById('loading').innerText = "โหลดข้อมูลไม่สำเร็จ";
+         console.error(err);
+      });
     }
 
     function renderTables(data) {
@@ -88,7 +107,7 @@
       
       data.forEach(item => {
         const tableNo = item[0];
-        const status = item[1]; // Available หรือ Booked
+        const status = item[1]; 
         
         const col = document.createElement('div');
         col.className = 'col-4 col-md-3';
@@ -113,55 +132,87 @@
       const modal = new bootstrap.Modal(document.getElementById('bookingModal'));
       modal.show();
       
-      // Handle Submit
-      document.getElementById('bookingForm').onsubmit = function(e) {
+      // ล้าง event เก่าออกก่อนกันเบิ้ล
+      const form = document.getElementById('bookingForm');
+      form.onsubmit = null; 
+      
+      form.onsubmit = function(e) {
         e.preventDefault();
         submitBooking(tableNo, modal);
       };
     }
 
-function submitBooking(tableNo, modalInstance) {
-  const name = document.getElementById('name').value;
-  const phone = document.getElementById('phone').value;
-  const time = document.getElementById('time').value;
+    function submitBooking(tableNo, modalInstance) {
+      const btn = document.getElementById('submitBtn');
+      btn.disabled = true;
+      btn.innerText = "กำลังบันทึก...";
 
-  const formData = {
-    action: 'book',
-    tableNo: tableNo,
-    name: name,
-    phone: phone,
-    time: time,
-    userId: liffProfile.userId
-  };
+      const name = document.getElementById('name').value;
+      const phone = document.getElementById('phone').value;
+      const time = document.getElementById('time').value;
 
-  // 1. บันทึกข้อมูลลง Google Sheets ก่อน
-  fetch(SCRIPT_URL, {
-    method: 'POST',
-    body: JSON.stringify(formData)
-  })
-  .then(res => res.json())
-  .then(response => {
-    if (response.status === 'success') {
-      
-      // 2. เมื่อบันทึกสำเร็จ สั่งให้ LIFF ส่งข้อความในนามลูกค้า (ข้อความสีเขียว)
-      liff.sendMessages([
-        {
-          type: 'text',
-          text: `ชื่อ:${name}\nเบอร์โทร:${phone}\nจองเวลา:${time}\n(หมายเลขโต๊ะ:${tableNo})`
+      const formData = {
+        action: 'book',
+        tableNo: tableNo,
+        name: name,
+        phone: phone,
+        time: time,
+        userId: liffProfile ? liffProfile.userId : 'Browser_Test'
+      };
+
+      // --- ส่วนแก้ไขสำคัญสำหรับการส่งข้อมูล ---
+      fetch(SCRIPT_URL, {
+        method: 'POST',
+        redirect: 'follow', // *สำคัญ* แก้ปัญหาค้าง
+        headers: {
+            "Content-Type": "text/plain;charset=utf-8", // *สำคัญ* ป้องกัน Preflight check
+        },
+        body: JSON.stringify(formData)
+      })
+      .then(res => res.json())
+      .then(response => {
+        if (response.status === 'success') {
+          
+          // ตรวจสอบว่าเปิดใน LINE จริงไหมก่อนส่งข้อความ
+          if (liff.isInClient()) {
+             liff.sendMessages([
+              {
+                type: 'text',
+                text: `ยืนยันการจอง\nชื่อ:${name}\nเบอร์โทร:${phone}\nจองเวลา:${time}\n(หมายเลขโต๊ะ:${tableNo})`
+              }
+            ]).then(() => {
+              Swal.fire('สำเร็จ', 'จองเรียบร้อยแล้ว', 'success').then(() => {
+                modalInstance.hide();
+                liff.closeWindow(); 
+              });
+            }).catch((err) => {
+              // กรณีส่งข้อความไม่ได้ (เช่นลืมเปิด scope) แต่จองสำเร็จ
+              console.error('LIFF send error', err);
+              Swal.fire('สำเร็จ', 'จองสำเร็จ (แต่ส่งข้อความไม่ผ่าน)', 'warning').then(()=>{
+                 modalInstance.hide();
+                 liff.closeWindow();
+              });
+            });
+          } else {
+             // กรณี Test ใน Browser 
+             Swal.fire('สำเร็จ', 'จองสำเร็จ (Browser Mode)', 'success').then(() => {
+                modalInstance.hide();
+                loadTableStatus(); // โหลดสถานะใหม่
+             });
+          }
+
+        } else {
+          Swal.fire('ผิดพลาด', response.message, 'error');
+          btn.disabled = false;
+          btn.innerText = "ยืนยันการจอง";
         }
-      ]).then(() => {
-        // ปิด Modal และปิดหน้าจอ LIFF เพื่อกลับไปดูหน้าแชท
-        modalInstance.hide();
-        liff.closeWindow(); 
-      }).catch((err) => {
-        console.error('LIFF sendMessages error', err);
+      })
+      .catch(err => {
+        Swal.fire('Error', 'เกิดข้อผิดพลาดในการเชื่อมต่อ: ' + err, 'error');
+        btn.disabled = false;
+        btn.innerText = "ยืนยันการจอง";
       });
-      
-    } else {
-      Swal.fire('ผิดพลาด', response.message, 'error');
     }
-  });
-}
 
     main();
   </script>
