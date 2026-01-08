@@ -120,44 +120,48 @@
       };
     }
 
-    function submitBooking(tableNo, modalInstance) {
-      const submitBtn = document.getElementById('submitBtn');
-      submitBtn.disabled = true;
-      submitBtn.innerText = 'กำลังบันทึก...';
+function submitBooking(tableNo, modalInstance) {
+  const name = document.getElementById('name').value;
+  const phone = document.getElementById('phone').value;
+  const time = document.getElementById('time').value;
 
-      const formData = {
-        action: 'book',
-        tableNo: tableNo,
-        name: document.getElementById('name').value,
-        phone: document.getElementById('phone').value,
-        time: document.getElementById('time').value,
-        userId: liffProfile.userId
-      };
+  const formData = {
+    action: 'book',
+    tableNo: tableNo,
+    name: name,
+    phone: phone,
+    time: time,
+    userId: liffProfile.userId
+  };
 
-      fetch(SCRIPT_URL, {
-        method: 'POST',
-        body: JSON.stringify(formData)
-      })
-      .then(res => res.json())
-      .then(response => {
-        if (response.status === 'success') {
-          Swal.fire('สำเร็จ', response.message, 'success').then(() => {
-            modalInstance.hide();
-            loadTableStatus(); // รีโหลดสถานะใหม่
-            liff.closeWindow(); // ปิดหน้าต่าง LIFF
-          });
-        } else {
-          Swal.fire('ผิดพลาด', response.message, 'error');
-          submitBtn.disabled = false;
-          submitBtn.innerText = 'ยืนยันการจอง';
+  // 1. บันทึกข้อมูลลง Google Sheets ก่อน
+  fetch(SCRIPT_URL, {
+    method: 'POST',
+    body: JSON.stringify(formData)
+  })
+  .then(res => res.json())
+  .then(response => {
+    if (response.status === 'success') {
+      
+      // 2. เมื่อบันทึกสำเร็จ สั่งให้ LIFF ส่งข้อความในนามลูกค้า (ข้อความสีเขียว)
+      liff.sendMessages([
+        {
+          type: 'text',
+          text: `ชื่อ:${name}\nเบอร์โทร:${phone}\nจองเวลา:${time}\n(หมายเลขโต๊ะ:${tableNo})`
         }
-      })
-      .catch(err => {
-        Swal.fire('Error', 'เกิดข้อผิดพลาดในการเชื่อมต่อ', 'error');
-        submitBtn.disabled = false;
-        submitBtn.innerText = 'ยืนยันการจอง';
+      ]).then(() => {
+        // ปิด Modal และปิดหน้าจอ LIFF เพื่อกลับไปดูหน้าแชท
+        modalInstance.hide();
+        liff.closeWindow(); 
+      }).catch((err) => {
+        console.error('LIFF sendMessages error', err);
       });
+      
+    } else {
+      Swal.fire('ผิดพลาด', response.message, 'error');
     }
+  });
+}
 
     main();
   </script>
