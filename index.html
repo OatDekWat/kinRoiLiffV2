@@ -3,151 +3,151 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ระบบจองโต๊ะ</title>
+    <title>Booking</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600&display=swap" rel="stylesheet">
-    
     <style>
-        body { font-family: 'Sarabun', sans-serif; }
+        @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&display=swap');
+        body { font-family: 'Kanit', sans-serif; -webkit-tap-highlight-color: transparent; }
+        .selected-table { background-color: #16a34a !important; color: white !important; border-color: #16a34a !important; }
     </style>
 </head>
-<body class="bg-gray-100 min-h-screen flex flex-col items-center py-6 px-4">
+<body class="bg-gray-50 h-screen flex flex-col">
 
-    <header class="w-full max-w-lg mb-6 text-center">
-        <h1 class="text-3xl font-bold text-gray-800">🍽️ จองโต๊ะอาหาร</h1>
-        <p class="text-gray-500 mt-2">กรุณาเลือกโต๊ะที่ต้องการจอง</p>
-    </header>
-
-    <div id="table-grid" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-4 w-full max-w-3xl">
-        </div>
-
-    <div id="loading" class="mt-10 text-gray-500 animate-pulse">
-        กำลังโหลดระบบ LIFF...
+    <div class="bg-white p-4 shadow-sm sticky top-0 z-10 text-center">
+        <h1 class="text-xl font-bold text-gray-800">🍽️ เลือกโต๊ะที่ต้องการจอง</h1>
     </div>
 
-    <div id="booking-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 px-4">
-        <div class="bg-white rounded-xl shadow-xl w-full max-w-md p-6 transform transition-all scale-100">
-            
-            <div class="flex justify-between items-center mb-4 border-b pb-2">
-                <h2 class="text-xl font-bold text-gray-800">จองโต๊ะที่ <span id="modal-table-no" class="text-green-600"></span></h2>
-                <button onclick="closeModal()" class="text-gray-400 hover:text-red-500 text-2xl">&times;</button>
+    <div class="flex-1 overflow-y-auto p-4">
+        <div id="tableContainer" class="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+            </div>
+    </div>
+
+    <div id="bookingSheet" class="fixed bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-[0_-5px_20px_rgba(0,0,0,0.1)] transform translate-y-full transition-transform duration-300 z-50 p-6 pb-10">
+        
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-bold text-gray-800">จองโต๊ะ <span id="lblTableNo" class="text-green-600"></span></h3>
+            <button onclick="closeSheet()" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+        </div>
+
+        <form onsubmit="event.preventDefault(); sendBooking();" class="space-y-4">
+            <div>
+                <input type="text" id="name" placeholder="ชื่อผู้จอง" required
+                    class="w-full bg-gray-100 px-4 py-3 rounded-xl outline-none focus:ring-2 focus:ring-green-500">
+            </div>
+            <div>
+                <input type="tel" id="phone" placeholder="เบอร์โทรศัพท์" required
+                    class="w-full bg-gray-100 px-4 py-3 rounded-xl outline-none focus:ring-2 focus:ring-green-500">
+            </div>
+            <div>
+                <input type="datetime-local" id="time" required
+                    class="w-full bg-gray-100 px-4 py-3 rounded-xl outline-none focus:ring-2 focus:ring-green-500 text-gray-600">
             </div>
 
-            <form id="booking-form" class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">ชื่อผู้จอง</label>
-                    <input type="text" id="name" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500">
-                </div>
-                
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">เบอร์โทรศัพท์</label>
-                    <input type="tel" id="phone" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500">
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">เวลาที่จะเข้ามา</label>
-                    <input type="time" id="time" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500">
-                </div>
-
-                <div class="pt-4 flex space-x-3">
-                    <button type="button" onclick="closeModal()" class="w-1/2 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition">ยกเลิก</button>
-                    <button type="submit" class="w-1/2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-semibold shadow-lg">ยืนยันการจอง</button>
-                </div>
-            </form>
-        </div>
+            <button type="submit" 
+                class="w-full bg-green-600 hover:bg-green-700 active:bg-green-800 text-white font-bold py-3 rounded-xl text-lg shadow-lg transition-all transform active:scale-95">
+                ยืนยันการจอง
+            </button>
+        </form>
     </div>
 
+    <div id="overlay" onclick="closeSheet()" class="fixed inset-0 bg-black bg-opacity-40 hidden z-40"></div>
+
     <script>
-        // --- 1. การตั้งค่า ---
-        const LIFF_ID = "2008852653-NMn9sh6P"; // ใส่ LIFF ID ของคุณที่นี่
-        const TOTAL_TABLES = 15; // จำนวนโต๊ะทั้งหมด
+        // --- การตั้งค่า ---
+        const LIFF_ID = "2008852653-NMn9sh6P"; // ID ของคุณ
+        const TABLE_COUNT = 14;
 
         let currentTable = null;
 
-        // --- 2. เริ่มต้นระบบ ---
+        // --- เริ่มต้นระบบ ---
         async function main() {
             try {
                 await liff.init({ liffId: LIFF_ID });
-                
-                document.getElementById('loading').style.display = 'none';
-                
-                if (!liff.isLoggedIn()) {
+                // ถ้าเปิดในไลน์ มันจะ login เองอัตโนมัติ ไม่เด้งหน้า login
+                if (!liff.isLoggedIn() && liff.isInClient()) {
                     liff.login();
-                } else {
-                    renderTables();
                 }
             } catch (err) {
-                console.error("LIFF Init Failed", err);
-                document.getElementById('loading').innerText = "เกิดข้อผิดพลาด: " + err.message;
+                console.error("LIFF Init Error:", err);
             }
+            renderTables();
         }
 
-        // --- 3. สร้างปุ่มโต๊ะ ---
+        // --- สร้างปุ่มโต๊ะ ---
         function renderTables() {
-            const grid = document.getElementById('table-grid');
-            grid.innerHTML = '';
-
-            for (let i = 1; i <= TOTAL_TABLES; i++) {
-                const btn = document.createElement('button');
-                btn.className = "bg-white border-2 border-green-500 text-green-600 hover:bg-green-500 hover:text-white rounded-xl p-4 flex flex-col items-center justify-center transition shadow-sm h-24";
-                btn.onclick = () => openModal(i);
-                
-                btn.innerHTML = `
-                    <span class="text-2xl mb-1">🪑</span>
-                    <span class="font-bold">โต๊ะ ${i}</span>
+            const container = document.getElementById('tableContainer');
+            let html = '';
+            for (let i = 1; i <= TABLE_COUNT; i++) {
+                html += `
+                    <button onclick="openSheet(${i})" id="btn-${i}"
+                        class="aspect-square bg-white border-2 border-gray-200 rounded-2xl flex flex-col items-center justify-center transition-all hover:border-green-500 hover:shadow-md">
+                        <span class="text-3xl mb-1">🪑</span>
+                        <span class="font-bold text-gray-600">T-${i}</span>
+                    </button>
                 `;
-                grid.appendChild(btn);
             }
+            container.innerHTML = html;
         }
 
-        // --- 4. จัดการ Modal ---
-        function openModal(tableNo) {
+        // --- เปิด/ปิด Form ---
+        function openSheet(tableNo) {
             currentTable = tableNo;
-            document.getElementById('modal-table-no').innerText = tableNo;
-            document.getElementById('booking-modal').classList.remove('hidden');
-            document.getElementById('booking-modal').classList.add('flex');
+            
+            // Reset Active State
+            document.querySelectorAll('button').forEach(b => b.classList.remove('selected-table'));
+            document.getElementById(`btn-${tableNo}`).classList.add('selected-table');
+
+            // Set Data
+            document.getElementById('lblTableNo').innerText = tableNo;
+            
+            // Set Default Time (Current Time)
+            const now = new Date();
+            now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+            document.getElementById('time').value = now.toISOString().slice(0, 16);
+
+            // Show Sheet
+            document.getElementById('overlay').classList.remove('hidden');
+            document.getElementById('bookingSheet').classList.remove('translate-y-full');
         }
 
-        function closeModal() {
-            document.getElementById('booking-modal').classList.add('hidden');
-            document.getElementById('booking-modal').classList.remove('flex');
-            document.getElementById('booking-form').reset();
+        function closeSheet() {
+            document.getElementById('overlay').classList.add('hidden');
+            document.getElementById('bookingSheet').classList.add('translate-y-full');
+            if(currentTable) document.getElementById(`btn-${currentTable}`).classList.remove('selected-table');
+            currentTable = null;
         }
 
-        // --- 5. ส่งข้อมูลกลับเข้าไลน์ ---
-        document.getElementById('booking-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-
+        // --- ส่งข้อความเข้าไลน์ (Core Function) ---
+        async function sendBooking() {
             const name = document.getElementById('name').value;
             const phone = document.getElementById('phone').value;
             const time = document.getElementById('time').value;
 
-            // สร้างข้อความที่จะส่ง
-            const messageText = `📝 ขอจองโต๊ะครับ\n\n` +
-                                `📍 โต๊ะที่: ${currentTable}\n` +
-                                `👤 ชื่อ: ${name}\n` +
-                                `📞 เบอร์: ${phone}\n` +
-                                `🕒 เวลา: ${time}`;
+            // จัดรูปแบบวันเวลาให้อ่านง่าย
+            const d = new Date(time);
+            const dateStr = d.toLocaleDateString('th-TH', {day:'numeric', month:'short', year:'2-digit'});
+            const timeStr = d.toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'});
+
+            const msg = `📌 จองโต๊ะ ${currentTable}\nชื่อ: ${name}\nโทร: ${phone}\nเวลา: ${dateStr} ${timeStr}`;
 
             try {
-                // ส่งข้อความในนามผู้ใช้
-                await liff.sendMessages([
-                    {
-                        type: 'text',
-                        text: messageText
-                    }
-                ]);
-
-                // ปิดหน้าต่าง LIFF
-                liff.closeWindow();
-
-            } catch (err) {
-                alert('ส่งข้อความไม่สำเร็จ! กรุณาลองใหม่ (' + err.message + ')');
+                if (liff.isInClient()) {
+                    // กรณีเปิดในไลน์: ส่งข้อความแล้วปิดหน้าต่าง
+                    await liff.sendMessages([{ type: 'text', text: msg }]);
+                    liff.closeWindow(); 
+                } else {
+                    // กรณีเปิดบนคอมพิวเตอร์ (Test Mode): แสดง Alert แทน
+                    alert("จำลองการส่งข้อความ:\n\n" + msg);
+                    console.log("Message Sent:", msg);
+                }
+            } catch (error) {
+                alert("เกิดข้อผิดพลาด: " + error);
+                console.error(error);
             }
-        });
+        }
 
-        // รันฟังก์ชันหลัก
+        // เริ่มโปรแกรม
         main();
     </script>
 </body>
